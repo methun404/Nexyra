@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexyra Desktop Environment</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'sans-serif'] },
+        colors: { appBg: '#0B0F19', panelBg: '#111827', brand: '#06b6d4' }
+      }
+    }
+  }
+</script>
+
+<style>
+  body {
+    background-color: #0B0F19;
+    color: #e2e8f0;
+    overflow: hidden; 
+  }
+  
+  .glass-panel {
+    background: rgba(17, 24, 39, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+  .no-select { user-select: none; }
+  
+  /* Animations */
+  @keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .toast-enter { animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+  
+  @keyframes popIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .modal-enter { animation: popIn 0.2s ease-out forwards; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .page-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+  /* Sidebar Transition */
+  .sidebar-transition { transition: width 0.3s ease-in-out; }
+  .text-transition { transition: opacity 0.2s; }
+</style>
+</head>
+<body class="h-screen w-full flex font-sans no-select relative">
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+  <!-- CONFIRMATION MODAL -->
+  <div id="confirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+    <div class="glass-panel p-6 rounded-2xl w-[90%] max-w-md scale-95 transition-transform duration-300" id="modalContent">
+      <div class="flex items-center gap-3 mb-4 text-red-400">
+        <i class="ph-fill ph-warning-circle text-3xl"></i>
+        <h3 class="text-xl font-semibold text-white" id="modalTitle">Confirm Action</h3>
+      </div>
+      <p class="text-gray-400 text-sm mb-6" id="modalDesc">Are you sure you want to proceed?</p>
+      <div class="flex justify-end gap-3">
+        <button onclick="closeModal()" class="px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/10 transition-colors">Cancel</button>
+        <button id="modalConfirmBtn" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-red-500/20">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div id="sidebar" class="sidebar-transition w-64 md:w-64 w-20 bg-panelBg/80 border-r border-white/5 flex flex-col justify-between flex-shrink-0 z-40 max-md:absolute max-md:h-full transform max-md:-translate-x-full md:translate-x-0 transition-transform">
+    <div>
+      <!-- Logo & Toggle -->
+      <div class="p-4 flex items-center justify-between h-16">
+        <div class="flex items-center gap-2 overflow-hidden whitespace-nowrap">
+          <i class="ph-fill ph-hexagon text-3xl text-cyan-400 shrink-0 drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]"></i>
+          <h1 class="text-xl font-bold tracking-wide text-white sidebar-text">NEXYRA</h1>
+        </div>
+        <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white hidden md:block shrink-0">
+          <i class="ph ph-caret-line-left text-xl transition-transform" id="sidebarToggleIcon"></i>
+        </button>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="p-3 flex flex-col gap-1 mt-2">
+        <button onclick="window.location.href='home.html'" class="nav-btn active flex items-center gap-3 w-full p-2.5 bg-cyan-500/10 text-cyan-400 rounded-lg text-sm font-medium transition-all group relative">
+          <i class="ph ph-squares-four text-xl shrink-0"></i> 
+          <span class="sidebar-text whitespace-nowrap">Dashboard</span>
+          <!-- Tooltip for collapsed state -->
+          <div class="absolute left-14 bg-black/90 px-2 py-1 text-xs rounded border border-white/10 opacity-0 hidden group-hover:block tooltip z-50">Dashboard</div>
+        </button>
+        <button onclick="window.location.href='processes.html'" class="nav-btn flex items-center gap-3 w-full p-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg text-sm font-medium transition-all group relative">
+          <i class="ph ph-cpu text-xl shrink-0"></i> 
+          <span class="sidebar-text whitespace-nowrap">Processes</span>
+          <div class="absolute left-14 bg-black/90 px-2 py-1 text-xs rounded border border-white/10 opacity-0 hidden group-hover:block tooltip z-50">Processes</div>
+        </button>
+        <button onclick="window.location.href='applications.html'" class="nav-btn flex items-center gap-3 w-full p-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg text-sm font-medium transition-all group relative">
+          <i class="ph ph-app-window text-xl shrink-0"></i> 
+          <span class="sidebar-text whitespace-nowrap">Applications</span>
+          <div class="absolute left-14 bg-black/90 px-2 py-1 text-xs rounded border border-white/10 opacity-0 hidden group-hover:block tooltip z-50">Applications</div>
+        </button>
+        <button onclick="window.location.href='organizer.html'" class="nav-btn flex items-center gap-3 w-full p-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg text-sm font-medium transition-all group relative">
+          <i class="ph ph-folder-notch text-xl shrink-0"></i> 
+          <span class="sidebar-text whitespace-nowrap">Organizer</span>
+          <div class="absolute left-14 bg-black/90 px-2 py-1 text-xs rounded border border-white/10 opacity-0 hidden group-hover:block tooltip z-50">Organizer</div>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Settings -->
+    <div class="p-4 border-t border-white/5">
+      <button class="flex items-center gap-3 w-full p-2 text-gray-400 hover:text-white transition-all text-sm group relative">
+        <i class="ph ph-gear text-xl shrink-0"></i> 
+        <span class="sidebar-text whitespace-nowrap">Settings</span>
+        <div class="absolute left-14 bg-black/90 px-2 py-1 text-xs rounded border border-white/10 opacity-0 hidden group-hover:block tooltip z-50">Settings</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT AREA -->
+  <div class="flex-1 flex flex-col h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-[#0B0F19] to-[#0B0F19]">
+    
+    <!-- Mobile Header -->
+    <div class="md:hidden flex items-center justify-between p-4 border-b border-white/5 bg-panelBg/50 backdrop-blur-md">
+      <div class="flex items-center gap-2">
+        <i class="ph-fill ph-hexagon text-2xl text-cyan-400"></i>
+        <h1 class="text-lg font-bold text-white">NEXYRA</h1>
+      </div>
+      <button onclick="toggleMobileSidebar()" class="text-gray-300 hover:text-white text-2xl"><i class="ph ph-list"></i></button>
+    </div>
+
+    <!-- Scrollable Content -->
+    <div class="flex-1 p-4 md:p-6 overflow-y-auto page-fade-in">
+      
+      <!-- HEADER -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6">
+        <div>
+          <h2 class="text-2xl sm:text-3xl font-semibold text-white">System Overview</h2>
+          <p class="text-sm text-gray-400 mt-1">Real-time performance metrics</p>
+        </div>
+        <div class="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/5 text-xs text-gray-300 shadow-inner">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+          </span>
+          System Online
+        </div>
+      </div>
+
+      <!-- STATS GRID -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <!-- CPU -->
+        <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-colors cursor-default">
+          <div class="flex justify-between items-start mb-2">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">CPU Usage</p>
+            <i class="ph ph-cpu text-cyan-400 text-xl"></i>
+          </div>
+          <div class="flex items-end gap-2"><h2 class="text-3xl font-bold text-white"><span id="cpuValue">42</span><span class="text-lg text-gray-500">%</span></h2></div>
+          <div class="w-full bg-gray-800 h-1.5 mt-4 rounded-full overflow-hidden">
+            <div id="cpuBar" class="bg-cyan-400 h-full rounded-full transition-all duration-1000" style="width: 42%"></div>
+          </div>
+        </div>
+        <!-- RAM -->
+        <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group hover:border-purple-500/30 transition-colors">
+          <div class="flex justify-between items-start mb-2">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Memory</p>
+            <i class="ph ph-memory text-purple-400 text-xl"></i>
+          </div>
+          <div class="flex items-end gap-2"><h2 class="text-3xl font-bold text-white"><span id="ramValue">7.2</span><span class="text-lg text-gray-500"> GB</span></h2></div>
+          <div class="w-full bg-gray-800 h-1.5 mt-4 rounded-full overflow-hidden">
+            <div id="ramBar" class="bg-purple-400 h-full rounded-full transition-all duration-1000" style="width: 65%"></div>
+          </div>
+        </div>
+        <!-- DISK -->
+        <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-colors">
+          <div class="flex justify-between items-start mb-2">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Disk I/O</p>
+            <i class="ph ph-hard-drives text-emerald-400 text-xl"></i>
+          </div>
+          <div class="flex items-end gap-2"><h2 class="text-3xl font-bold text-white"><span id="diskValue">12</span><span class="text-lg text-gray-500">%</span></h2></div>
+          <div class="w-full bg-gray-800 h-1.5 mt-4 rounded-full overflow-hidden">
+            <div id="diskBar" class="bg-emerald-400 h-full rounded-full transition-all duration-1000" style="width: 12%"></div>
+          </div>
+        </div>
+        <!-- NETWORK -->
+        <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group hover:border-blue-500/30 transition-colors">
+          <div class="flex justify-between items-start mb-2">
+            <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Network</p>
+            <i class="ph ph-wifi-high text-blue-400 text-xl"></i>
+          </div>
+          <div class="flex items-end gap-2"><h2 class="text-3xl font-bold text-white">1.8<span class="text-lg text-gray-500"> MB/s</span></h2></div>
+          <div class="w-full bg-gray-800 h-1.5 mt-4 rounded-full overflow-hidden flex">
+            <div class="bg-blue-400 h-full rounded-full w-[40%] animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN LAYOUT GRID (Responsive) -->
+      <div class="flex flex-col lg:grid lg:grid-cols-3 gap-6">
+        
+        <!-- LEFT COLUMN -->
+        <div class="lg:col-span-2 flex flex-col gap-6">
+          
+          <!-- PROCESS MANAGER -->
+          <div class="glass-panel rounded-2xl flex flex-col h-[350px]">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border-b border-white/5 gap-3">
+              <h3 class="font-medium flex items-center gap-2"><i class="ph ph-activity text-gray-400"></i> Active Processes</h3>
+              <div class="relative w-full sm:w-auto">
+                <i class="ph ph-magnifying-glass absolute left-3 top-2 text-gray-500"></i>
+                <input type="text" placeholder="Search tasks..." class="w-full sm:w-56 bg-black/30 border border-white/10 pl-9 pr-3 py-1.5 rounded-lg text-xs focus:outline-none focus:border-cyan-500 text-white placeholder-gray-600 transition-colors">
+              </div>
+            </div>
+            
+            <div class="flex-1 overflow-x-auto p-2">
+              <table class="w-full text-sm text-left min-w-[500px]">
+                <thead class="text-xs text-gray-500 uppercase bg-black/20">
+                  <tr>
+                    <th class="px-4 py-3 font-medium rounded-l-lg">Process Name</th>
+                    <th class="px-4 py-3 font-medium">PID</th>
+                    <th class="px-4 py-3 font-medium">CPU</th>
+                    <th class="px-4 py-3 font-medium">RAM</th>
+                    <th class="px-4 py-3 font-medium text-right rounded-r-lg">Action</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5" id="processTable">
+                  <tr>
+                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                      <i class="ph-bold ph-spinner animate-spin text-3xl mb-2 text-cyan-400 block mx-auto w-fit"></i>
+                      <p>Loading Active Processes...</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- SMART ORGANIZER -->
+          <div class="glass-panel p-5 rounded-2xl">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-medium flex items-center gap-2"><i class="ph ph-magic-wand text-purple-400"></i> Smart Organizer</h3>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button onclick="triggerToast('Sorting files by type...', 'info')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-white/5 bg-black/20 hover:bg-cyan-500/10 hover:border-cyan-500/30 transition-all group">
+                <i class="ph ph-file-dashed text-2xl text-gray-500 group-hover:text-cyan-400 transition-colors"></i>
+                <span class="text-sm sm:text-xs font-medium">Sort by Type</span>
+              </button>
+              <button onclick="triggerToast('Sorting files by size...', 'info')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-white/5 bg-black/20 hover:bg-indigo-500/10 hover:border-indigo-500/30 transition-all group">
+                <i class="ph ph-database text-2xl text-gray-500 group-hover:text-indigo-400 transition-colors"></i>
+                <span class="text-sm sm:text-xs font-medium">Sort by Size</span>
+              </button>
+              <button onclick="triggerToast('AI is analyzing your desktop...', 'success')" class="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/20 transition-all relative overflow-hidden group">
+                <i class="ph-fill ph-sparkle text-2xl text-cyan-400 group-hover:scale-110 transition-transform"></i>
+                <span class="text-sm sm:text-xs font-medium text-cyan-100">AI Auto-Sort</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="lg:col-span-1 flex flex-col gap-6">
+          
+          <!-- QUICK APPS -->
+          <div class="glass-panel rounded-2xl p-5">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-medium flex items-center gap-2"><i class="ph ph-grid-four text-gray-400"></i> Applications</h3>
+              <button onclick="triggerToast('Searching for new applications...', 'info')" class="text-cyan-400 hover:text-cyan-300 hover:scale-110 transition-transform"><i class="ph-fill ph-plus-circle text-xl"></i></button>
+            </div>
+            
+            <div class="space-y-3" id="appList">
+              <div class="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5 hover:border-white/10 transition-colors">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded bg-white/5 flex items-center justify-center text-lg"><i class="ph-fill ph-terminal text-gray-300"></i></div>
+                  <div><div class="text-sm font-medium">Command Line</div></div>
+                </div>
+                <button onclick="triggerToast('App Launched', 'success')" class="text-gray-500 hover:text-cyan-400 transition-colors px-2 text-xs border border-white/10 rounded py-1">Open</button>
+              </div>
+              <div class="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/5 hover:border-white/10 transition-colors">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded bg-white/5 flex items-center justify-center text-lg"><i class="ph-fill ph-folder text-yellow-500"></i></div>
+                  <div><div class="text-sm font-medium">File Explorer</div></div>
+                </div>
+                <button onclick="triggerToast('App Launched', 'success')" class="text-gray-500 hover:text-cyan-400 transition-colors px-2 text-xs border border-white/10 rounded py-1">Open</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI COPILOT -->
+          <div class="glass-panel rounded-2xl flex flex-col flex-1 min-h-[250px] border border-indigo-500/20">
+            <div class="p-3 border-b border-white/5 flex items-center gap-2 bg-indigo-500/5">
+              <i class="ph-fill ph-robot text-indigo-400 text-xl"></i>
+              <h3 class="font-medium text-indigo-100 text-sm">Nexyra AI Copilot</h3>
+            </div>
+            
+            <div class="flex-1 p-4 overflow-y-auto flex flex-col gap-3" id="chatArea">
+              <!-- Bot Msg -->
+              <div class="flex gap-2">
+                <div class="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0 text-indigo-400 text-xs"><i class="ph-fill ph-robot"></i></div>
+                <div class="bg-white/5 rounded-lg rounded-tl-none p-2.5 text-xs text-gray-300 border border-white/5">
+                  System looks healthy. I notice Chrome is using 1.5GB RAM. Do you want me to optimize it?
+                </div>
+              </div>
+            </div>
+            
+            <div class="p-2 border-t border-white/5 bg-black/20">
+              <form onsubmit="handleAICommand(event)" class="relative flex items-center">
+                <input type="text" id="aiInput" placeholder="Ask AI to do something..." class="w-full bg-black/40 border border-white/10 rounded-lg pl-3 pr-10 py-2.5 text-xs focus:outline-none focus:border-indigo-500 text-white placeholder-gray-500 transition-colors">
+                <button type="submit" class="absolute right-2 text-indigo-400 hover:text-indigo-300 p-1"><i class="ph-fill ph-paper-plane-right text-lg"></i></button>
+              </form>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  // --- SIDEBAR LOGIC ---
+  let isSidebarCollapsed = false;
+  function toggleSidebar() {
+    isSidebarCollapsed = !isSidebarCollapsed;
+    const sidebar = document.getElementById('sidebar');
+    const texts = document.querySelectorAll('.sidebar-text');
+    const tooltips = document.querySelectorAll('.tooltip');
+    const icon = document.getElementById('sidebarToggleIcon');
+
+    if(isSidebarCollapsed) {
+      sidebar.classList.remove('md:w-64');
+      sidebar.classList.add('md:w-20');
+      texts.forEach(el => el.classList.add('opacity-0', 'hidden'));
+      tooltips.forEach(el => el.classList.remove('hidden'));
+      icon.classList.add('rotate-180');
+    } else {
+      sidebar.classList.remove('md:w-20');
+      sidebar.classList.add('md:w-64');
+      texts.forEach(el => { el.classList.remove('hidden'); setTimeout(()=> el.classList.remove('opacity-0'), 100); });
+      tooltips.forEach(el => el.classList.add('hidden'));
+      icon.classList.remove('rotate-180');
+    }
+  }
+
+  // Mobile Sidebar
+  function toggleMobileSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar.classList.contains('-translate-x-full')) {
+      sidebar.classList.remove('-translate-x-full');
+    } else {
+      sidebar.classList.add('-translate-x-full');
+    }
+  }
+
+  // --- TOAST NOTIFICATIONS ---
+  function triggerToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    
+    // Configure colors based on type
+    let icon = 'ph-info';
+    let bgColor = 'bg-blue-500/10 border-blue-500/20';
+    let iconColor = 'text-blue-400';
+    
+    if(type === 'success') { icon = 'ph-check-circle'; bgColor = 'bg-green-500/10 border-green-500/20'; iconColor = 'text-green-400'; }
+    if(type === 'error') { icon = 'ph-warning-circle'; bgColor = 'bg-red-500/10 border-red-500/20'; iconColor = 'text-red-400'; }
+
+    toast.className = `toast-enter flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-lg pointer-events-auto ${bgColor}`;
+    toast.innerHTML = `<i class="ph-fill ${icon} ${iconColor} text-xl"></i><span class="text-sm font-medium text-white">${message}</span>`;
+    
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(100%)';
+      toast.style.transition = 'all 0.3s ease';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
+  // --- MODAL & PROCESS LOGIC ---
+  const modal = document.getElementById('confirmModal');
+  const modalContent = document.getElementById('modalContent');
+  let currentProcessId = null;
+
+  function requestKillProcess(rowId, processName) {
+    currentProcessId = rowId;
+    document.getElementById('modalTitle').innerText = 'End Task';
+    document.getElementById('modalDesc').innerText = `Warning: Terminating '${processName}' may cause unsaved data to be lost. Are you sure?`;
+    
+    modal.classList.remove('hidden');
+    // small delay to allow display:block to apply before animating opacity
+    setTimeout(() => {
+      modal.classList.remove('opacity-0');
+      modalContent.classList.remove('scale-95');
+    }, 10);
+  }
+
+  function closeModal() {
+    modal.classList.add('opacity-0');
+    modalContent.classList.add('scale-95');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+    currentProcessId = null;
+  }
+
+  // --- API DATA FETCHING ---
+  async function fetchSysInfo() {
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/sysinfo');
+      if(!res.ok) throw new Error('Backend error');
+      const data = await res.json();
+      if(data.cpu) {
+        document.getElementById('cpuValue').innerText = data.cpu;
+        document.getElementById('cpuBar').style.width = `${Math.min(100, parseFloat(data.cpu))}%`;
+        
+        let memTotal = parseFloat(data.ram_total.replace('GB',''));
+        let memUsedRaw = data.ram_used;
+        let memUsedVal = parseFloat(memUsedRaw);
+        if(memUsedRaw.includes('M')) memUsedVal = memUsedVal / 1024;
+        let memPct = (memUsedVal / memTotal) * 100;
+
+        document.getElementById('ramValue').innerText = memUsedVal.toFixed(1);
+        document.getElementById('ramBar').style.width = `${Math.min(100, memPct)}%`;
+        
+        document.getElementById('diskValue').innerText = data.disk_pct;
+        document.getElementById('diskBar').style.width = `${Math.min(100, parseFloat(data.disk_pct))}%`;
+      }
+    } catch(err) {
+      console.error('SysInfo Fetch Error:', err);
+    }
+  }
+
+  async function fetchProcesses() {
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/processes');
+      if(!res.ok) throw new Error('Process Fetch Failed');
+      const data = await res.json();
+      if(data.processes) {
+        const tbody = document.getElementById('processTable');
+        tbody.innerHTML = '';
+        data.processes.slice(0, 5).forEach(proc => {
+          const cleanName = proc.name.replace(/'/g, "\\'").substring(0, 20);
+          tbody.innerHTML += `
+            <tr class="hover:bg-white/5 transition-colors group" id="proc-${proc.pid}">
+              <td class="px-4 py-3 flex items-center gap-2 font-medium"><i class="ph-fill ph-cpu text-cyan-400"></i> ${cleanName}</td>
+              <td class="px-4 py-3 text-gray-400">${proc.pid}</td>
+              <td class="px-4 py-3 text-orange-400">${proc.cpu}%</td>
+              <td class="px-4 py-3">${proc.mem}%</td>
+              <td class="px-4 py-3 text-right">
+                <button onclick="requestKillProcess('proc-${proc.pid}', '${cleanName}')" class="opacity-0 group-hover:opacity-100 px-3 py-1 bg-red-500/10 text-red-400 border border-red-500/20 rounded hover:bg-red-500 hover:text-white transition-all text-xs">End Task</button>
+              </td>
+            </tr>
+          `;
+        });
+      }
+    } catch(err) {
+      console.error('Processes Fetch Error:', err);
+    }
+  }
+
+  // Load data on start and interval
+  fetchSysInfo();
+  setInterval(fetchSysInfo, 3000);
+  fetchProcesses();
+  setInterval(fetchProcesses, 5000);
+
+  // Update original requestKillProcess to actually call backend
+  async function requestKillProcessAPI() {
+    if(currentProcessId) {
+       const btn = document.getElementById('modalConfirmBtn');
+       btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Processing...';
+       btn.disabled = true;
+       btn.classList.add('opacity-70', 'cursor-not-allowed');
+
+       const pid = currentProcessId.replace('proc-','');
+       try {
+         const res = await fetch(`http://127.0.0.1:8000/api/process/kill/${pid}`, {method: 'POST'});
+         if(!res.ok) throw new Error('Kill Failed');
+         
+         const row = document.getElementById(currentProcessId);
+         if(row) {
+           row.style.transition = "all 0.3s ease";
+           row.style.opacity = "0";
+           row.style.transform = "translateX(-20px)";
+           setTimeout(() => row.remove(), 300);
+         }
+         triggerToast('Process terminated successfully', 'success');
+       } catch(e) {
+         triggerToast('Failed to kill process', 'error');
+       }
+
+      btn.innerHTML = 'Confirm';
+      btn.disabled = false;
+      btn.classList.remove('opacity-70', 'cursor-not-allowed');
+
+      closeModal();
+    }
+  }
+
+  // Overriding modal confirm button logic 
+  document.getElementById('modalConfirmBtn').addEventListener('click', requestKillProcessAPI);
+</script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexyra</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: radial-gradient(circle at top, #0f172a, #020617);
+        overflow: hidden;
+        font-family: 'Segoe UI', sans-serif;
+        color: white;
+    }
+
+    /* Background animated grid */
+    .grid {
+        position: absolute;
+        width: 200%;
+        height: 200%;
+        background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+        background-size: 40px 40px;
+        transform: rotateX(60deg);
+        animation: moveGrid 10s linear infinite;
+    }
+
+    @keyframes moveGrid {
+        0% { transform: rotateX(60deg) translateY(0); }
+        100% { transform: rotateX(60deg) translateY(40px); }
+    }
+
+    /* Floating particles */
+    .particles span {
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        background: #0ad1c8;
+        border-radius: 50%;
+        animation: float 6s linear infinite;
+    }
+
+    @keyframes float {
+        0% { transform: translateY(0) scale(1); opacity: 0; }
+        50% { opacity: 1; }
+        100% { transform: translateY(-800px) scale(0.5); opacity: 0; }
+    }
+
+    /* Main container */
+    .container {
+        text-align: center;
+        z-index: 2;
+    }
+
+    /* Logo */
+    .logo {
+        font-size: 60px;
+        font-weight: bold;
+        letter-spacing: 3px;
+        background: linear-gradient(90deg, #0ad1c8, #80ed99);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: glow 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes glow {
+        from { text-shadow: 0 0 10px #0ad1c8; }
+        to { text-shadow: 0 0 30px #80ed99; }
+    }
+
+    /* Subtitle */
+    .subtitle {
+        margin-top: 10px;
+        font-size: 16px;
+        opacity: 0.7;
+        letter-spacing: 2px;
+        animation: fadeIn 2s ease forwards;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 0.7; transform: translateY(0); }
+    }
+
+    /* Loader */
+    .loader {
+        margin-top: 40px;
+        width: 200px;
+        height: 4px;
+        background: rgba(255,255,255,0.1);
+        overflow: hidden;
+        border-radius: 5px;
+    }
+
+    .loader::before {
+        content: '';
+        position: absolute;
+        width: 50%;
+        height: 4px;
+        background: linear-gradient(90deg, #0ad1c8, #80ed99);
+        animation: load 2s infinite;
+    }
+
+    @keyframes load {
+        0% { left: -50%; }
+        100% { left: 100%; }
+    }
+
+    /* Rotating cube (3D effect) */
+    .cube {
+        position: absolute;
+        width: 120px;
+        height: 120px;
+        transform-style: preserve-3d;
+        animation: rotateCube 10s infinite linear;
+        top: 20%;
+        left: 10%;
+    }
+
+    .cube div {
+        position: absolute;
+        width: 120px;
+        height: 120px;
+        background: rgba(10,209,200,0.1);
+        border: 1px solid rgba(10,209,200,0.3);
+    }
+
+    .cube .front  { transform: translateZ(60px); }
+    .cube .back   { transform: rotateY(180deg) translateZ(60px); }
+    .cube .left   { transform: rotateY(-90deg) translateZ(60px); }
+    .cube .right  { transform: rotateY(90deg) translateZ(60px); }
+    .cube .top    { transform: rotateX(90deg) translateZ(60px); }
+    .cube .bottom { transform: rotateX(-90deg) translateZ(60px); }
+
+    @keyframes rotateCube {
+        0% { transform: rotateX(0) rotateY(0); }
+        100% { transform: rotateX(360deg) rotateY(360deg); }
+    }
+
+</style>
+</head>
+<body>
+
+<div class="grid"></div>
+
+<div class="cube">
+    <div class="front"></div>
+    <div class="back"></div>
+    <div class="left"></div>
+    <div class="right"></div>
+    <div class="top"></div>
+    <div class="bottom"></div>
+</div>
+
+<div class="particles"></div>
+
+<div class="container">
+    <div class="logo">NEXYRA</div>
+    <div class="subtitle">System Monitor • Automation • Utilities</div>
+    <div class="loader"></div>
+</div>
+
+<script>
+// Generate particles
+const particlesContainer = document.querySelector('.particles');
+for (let i = 0; i < 60; i++) {
+    const span = document.createElement('span');
+    span.style.left = Math.random() * 100 + 'vw';
+    span.style.top = Math.random() * 100 + 'vh';
+    span.style.animationDuration = (Math.random() * 5 + 3) + 's';
+    span.style.opacity = Math.random();
+    particlesContainer.appendChild(span);
+}
+
+// Auto close (for Electron usage)
+setTimeout(() => {
+    document.body.style.transition = 'opacity 1s';
+    document.body.style.opacity = 0;
+}, 5000);
+</script>
+
+</body>
+</html>

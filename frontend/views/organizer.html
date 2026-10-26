@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organizer - Nexyra Desktop</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'sans-serif'] },
+        colors: { appBg: '#0B0F19', panelBg: '#111827', brand: '#06b6d4' }
+      }
+    }
+  }
+</script>
+
+<style>
+  body {
+    background-color: #0B0F19;
+    color: #e2e8f0;
+    overflow: hidden; 
+  }
+  
+  .glass-panel {
+    background: rgba(17, 24, 39, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+  .no-select { user-select: none; }
+  
+  /* Animations */
+  @keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .toast-enter { animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+  
+  @keyframes popIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .modal-enter { animation: popIn 0.2s ease-out forwards; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .page-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+  .sidebar-transition { transition: width 0.3s ease-in-out; }
+
+  /* AI Glowing Border Animation */
+  .ai-glow {
+    position: relative;
+  }
+  .ai-glow::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(45deg, #06b6d4, #8b5cf6, #ec4899, #06b6d4);
+    border-radius: inherit;
+    z-index: -1;
+    background-size: 200% 200%;
+    animation: gradientMove 3s linear infinite;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .ai-glow:hover::before, .ai-glow.active::before {
+    opacity: 1;
+  }
+  @keyframes gradientMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+</style>
+</head>
+<body class="h-screen w-full flex font-sans no-select relative">
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+  <!-- CONFIRMATION MODAL -->
+  <div id="confirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center opacity-0 transition-opacity duration-300">
+    <div class="glass-panel p-6 rounded-2xl w-[90%] max-w-md scale-95 transition-transform duration-300" id="modalContent">
+      <div class="flex items-center gap-3 mb-4 text-orange-400">
+        <i class="ph-fill ph-broom text-3xl"></i>
+        <h3 class="text-xl font-semibold text-white" id="modalTitle">Clean Junk Files</h3>
+      </div>
+      <p class="text-gray-400 text-sm mb-6" id="modalDesc">Are you sure you want to permanently delete 2.4 GB of temporary and junk files?</p>
+      <div class="flex justify-end gap-3">
+        <button onclick="closeModal()" class="px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/10 transition-colors">Cancel</button>
+        <button id="modalConfirmBtn" class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-orange-500/20">Clean Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div id="sidebar" class="sidebar-transition w-64 md:w-64 w-20 bg-panelBg/80 border-r border-white/5 flex flex-col justify-between flex-shrink-0 z-40 max-md:absolute max-md:h-full transform max-md:-translate-x-full md:translate-x-0 transition-transform">
+    <div>
+      <div class="p-4 flex items-center justify-between h-16">
+        <div class="flex items-center gap-2 overflow-hidden whitespace-nowrap">
+          <i class="ph-fill ph-hexagon text-3xl text-cyan-400 shrink-0 drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]"></i>
+          <h1 class="text-xl font-bold tracking-wide text-white sidebar-text">NEXYRA</h1>
+        </div>
+        <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white hidden md:block shrink-0">
+          <i class="ph ph-caret-line-left text-xl transition-transform" id="sidebarToggleIcon"></i>
+        </button>
+      </div>
+
+      <nav class="p-3 flex flex-col gap-1 mt-2">
+        <button onclick="window.location.href='home.html'" class="nav-btn flex items-center gap-3 w-full p-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg text-sm font-medium transition-all group relative">
+          <i class="ph ph-squares-four text-xl shrink-0"></i> 
+          <span class="sidebar-text whitespace-nowrap">Dashboard</span>
+          <div class="absolute left-14 bg-black/90 px-2 py-1 text-xs rounded border border-white/10 opacity-0 hidden group-hover:block tooltip z-50">Dashboard</div>
+        </button>
+        <button onclick="window.location.href='processes.html'" class="nav-btn flex items-center gap-3 w-full p-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg text-sm font-medium transition-all group relative">
+          <i class="ph ph-cpu text-xl shrink-0"></i> 
+          <span class="sidebar-text whitespace-nowrap">Processes</span>
+          <div class="absolute left-14 bg-black/90 px-2 py-1 text-xs rounded border border-white/10 opacity-0 hidden group-hover:block tooltip z-50">Processes</div>
+        </button>
+        <button onclick="window.location.href='applications.html'" class="nav-btn flex items-center gap-3 w-full p-2.5 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg text-sm font-medium transition-all group relative">
+          <i class="ph ph-app-window text-xl shrink-0"></i> 
+          <span class="sidebar-text whitespace-nowrap">Applications</span>
+          <div class="absolute left-14 bg-black/90 px-2 py-1 text-xs rounded border border-white/10 opacity-0 hidden group-hover:block tooltip z-50">Applications</div>
+        </button>
+        <!-- ACTIVE STATE FOR ORGANIZER -->
+        <button onclick="window.location.href='organizer.html'" class="nav-btn active flex items-center gap-3 w-full p-2.5 bg-cyan-500/10 text-cyan-400 rounded-lg text-sm font-medium transition-all group relative border-l-2 border-cyan-400">
+          <i class="ph-fill ph-folder-notch text-xl shrink-0 drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]"></i> 
+          <span class="sidebar-text whitespace-nowrap">Organizer</span>
+          <div class="absolute left-14 bg-black/90 px-2 py-1 text-xs rounded border border-white/10 opacity-0 hidden group-hover:block tooltip z-50">Organizer</div>
+        </button>
+      </nav>
+    </div>
+    <div class="p-4 border-t border-white/5">
+      <button class="flex items-center gap-3 w-full p-2 text-gray-400 hover:text-white transition-all text-sm group relative">
+        <i class="ph ph-gear text-xl shrink-0"></i> 
+        <span class="sidebar-text whitespace-nowrap">Settings</span>
+        <div class="absolute left-14 bg-black/90 px-2 py-1 text-xs rounded border border-white/10 opacity-0 hidden group-hover:block tooltip z-50">Settings</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT AREA -->
+  <div class="flex-1 flex flex-col h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-[#0B0F19] to-[#0B0F19]">
+    
+    <!-- Mobile Header -->
+    <div class="md:hidden flex items-center justify-between p-4 border-b border-white/5 bg-panelBg/50 backdrop-blur-md">
+      <div class="flex items-center gap-2">
+        <i class="ph-fill ph-hexagon text-2xl text-cyan-400"></i>
+        <h1 class="text-lg font-bold text-white">NEXYRA</h1>
+      </div>
+      <button onclick="toggleMobileSidebar()" class="text-gray-300 hover:text-white text-2xl"><i class="ph ph-list"></i></button>
+    </div>
+
+    <!-- Scrollable Content -->
+    <div class="flex-1 p-4 md:p-6 overflow-y-auto flex flex-col gap-6 page-fade-in">
+      
+      <!-- HEADER -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+        <div>
+          <h2 class="text-2xl sm:text-3xl font-semibold text-white">Smart Organizer</h2>
+          <div class="flex items-center gap-2 text-sm text-gray-400 mt-1" id="currentPath">
+            <i class="ph ph-hard-drives"></i> Loading path...
+          </div>
+        </div>
+        <button onclick="triggerToast('Opening directory picker...', 'info')" class="flex items-center gap-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          <i class="ph ph-folder-open"></i> Select Folder
+        </button>
+      </div>
+
+      <!-- STORAGE METRICS -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <!-- Storage usage -->
+        <div class="glass-panel p-5 rounded-2xl sm:col-span-2 relative overflow-hidden flex flex-col justify-center">
+          <div class="flex justify-between items-end mb-3">
+            <div>
+              <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Total Storage</p>
+              <h3 class="text-2xl font-bold text-white">
+                <span id="diskUsedText">---</span> 
+                <span class="text-sm font-normal text-gray-500">used of <span id="diskTotalText">---</span></span>
+              </h3>
+            </div>
+            <div class="text-right">
+              <p class="text-xs text-green-400 mb-1" id="diskStatus">Healthy</p>
+              <p class="text-sm text-gray-300" id="diskFreeText">--- Free</p>
+            </div>
+          </div>
+          <!-- Multi-color Progress Bar -->
+          <div class="w-full h-3 bg-black/50 rounded-full overflow-hidden flex gap-[2px]">
+            <div class="bg-blue-500 h-full w-[40%]" title="Documents: 40%"></div>
+            <div class="bg-purple-500 h-full w-[15%]" title="Apps: 15%"></div>
+            <div class="bg-yellow-500 h-full w-[10%]" title="Media: 10%"></div>
+            <div class="bg-orange-500 h-full w-[5%]" id="junkBar" title="Junk: 5%"></div>
+          </div>
+          <!-- Legend -->
+          <div class="flex gap-4 mt-3 text-[10px] text-gray-400">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Files</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-purple-500"></span> Apps</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-500"></span> Media</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span> Junk</span>
+          </div>
+        </div>
+
+        <!-- Junk Cleaner Card -->
+        <div class="glass-panel p-5 rounded-2xl flex flex-col items-center justify-center text-center group border border-transparent hover:border-orange-500/30 transition-colors">
+          <i class="ph-fill ph-trash text-3xl text-orange-400 mb-2 group-hover:scale-110 transition-transform"></i>
+          <h3 class="text-xl font-bold text-white" id="junkText">2.4 GB</h3>
+          <p class="text-xs text-gray-400 mb-3">Temporary & Junk Files</p>
+          <button onclick="requestCleanJunk()" class="bg-orange-500/10 text-orange-400 hover:bg-orange-500 hover:text-white px-4 py-1.5 rounded-lg text-xs border border-orange-500/20 transition-all w-full font-medium">Clean Up</button>
+        </div>
+      </div>
+
+      <!-- MAIN CONTENT GRID -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+        
+        <!-- LEFT/MIDDLE: FOLDERS & RECENT FILES -->
+        <div class="lg:col-span-2 flex flex-col gap-6">
+          
+          <!-- Category Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <!-- Documents -->
+            <div class="glass-panel p-4 rounded-xl flex flex-col gap-2 hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-blue-500/30">
+              <div class="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 text-xl"><i class="ph-fill ph-file-text"></i></div>
+              <div>
+                <h4 class="text-sm font-medium text-white">Documents</h4>
+                <p class="text-xs text-gray-500">1,204 files &bull; 15 GB</p>
+              </div>
+            </div>
+            <!-- Images -->
+            <div class="glass-panel p-4 rounded-xl flex flex-col gap-2 hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-yellow-500/30">
+              <div class="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center text-yellow-400 text-xl"><i class="ph-fill ph-image"></i></div>
+              <div>
+                <h4 class="text-sm font-medium text-white">Images</h4>
+                <p class="text-xs text-gray-500">3,402 files &bull; 42 GB</p>
+              </div>
+            </div>
+            <!-- Videos -->
+            <div class="glass-panel p-4 rounded-xl flex flex-col gap-2 hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-red-500/30">
+              <div class="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center text-red-400 text-xl"><i class="ph-fill ph-video-camera"></i></div>
+              <div>
+                <h4 class="text-sm font-medium text-white">Videos</h4>
+                <p class="text-xs text-gray-500">145 files &bull; 110 GB</p>
+              </div>
+            </div>
+            <!-- Code -->
+            <div class="glass-panel p-4 rounded-xl flex flex-col gap-2 hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-green-500/30">
+              <div class="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center text-green-400 text-xl"><i class="ph-fill ph-file-code"></i></div>
+              <div>
+                <h4 class="text-sm font-medium text-white">Development</h4>
+                <p class="text-xs text-gray-500">8,200 files &bull; 8 GB</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Unorganized Files Table -->
+          <div class="glass-panel rounded-2xl flex flex-col flex-1 min-h-[250px]">
+            <div class="flex justify-between items-center p-4 border-b border-white/5">
+              <h3 class="font-medium flex items-center gap-2 text-sm"><i class="ph ph-files text-gray-400"></i> Unorganized Desktop Files</h3>
+              <span class="bg-white/10 text-gray-300 text-[10px] px-2 py-1 rounded-full" id="unorgCount">6 items</span>
+            </div>
+            
+            <div class="flex-1 overflow-auto p-2">
+              <table class="w-full text-sm text-left">
+                <tbody class="divide-y divide-white/5" id="fileTable">
+                  <tr class="hover:bg-white/5 transition-colors group">
+                    <td class="px-4 py-3 flex items-center gap-3"><i class="ph-fill ph-image text-yellow-400 text-lg"></i> Screenshot_01.png</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs">2 mins ago</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs text-right">2.4 MB</td>
+                  </tr>
+                  <tr class="hover:bg-white/5 transition-colors group">
+                    <td class="px-4 py-3 flex items-center gap-3"><i class="ph-fill ph-file-pdf text-red-400 text-lg"></i> Invoice_Q3.pdf</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs">1 hour ago</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs text-right">1.1 MB</td>
+                  </tr>
+                  <tr class="hover:bg-white/5 transition-colors group">
+                    <td class="px-4 py-3 flex items-center gap-3"><i class="ph-fill ph-file-archive text-purple-400 text-lg"></i> Project_Assets.zip</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs">Yesterday</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs text-right">145 MB</td>
+                  </tr>
+                  <tr class="hover:bg-white/5 transition-colors group">
+                    <td class="px-4 py-3 flex items-center gap-3"><i class="ph-fill ph-file-video text-blue-400 text-lg"></i> Screen_Record_final.mp4</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs">Yesterday</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs text-right">320 MB</td>
+                  </tr>
+                  <tr class="hover:bg-white/5 transition-colors group">
+                    <td class="px-4 py-3 flex items-center gap-3"><i class="ph-fill ph-file-doc text-blue-500 text-lg"></i> Notes_Meeting.docx</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs">2 days ago</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs text-right">14 KB</td>
+                  </tr>
+                  <tr class="hover:bg-white/5 transition-colors group">
+                    <td class="px-4 py-3 flex items-center gap-3"><i class="ph-fill ph-file-code text-green-400 text-lg"></i> script_v2.js</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs">3 days ago</td>
+                    <td class="px-4 py-3 text-gray-400 text-xs text-right">4 KB</td>
+                  </tr>
+                </tbody>
+              </table>
+              
+              <!-- Empty State (Hidden initially) -->
+              <div id="emptyState" class="hidden flex-col items-center justify-center h-full text-center py-10">
+                <i class="ph-fill ph-check-circle text-4xl text-green-400 mb-2"></i>
+                <h4 class="text-white font-medium">All Clean!</h4>
+                <p class="text-xs text-gray-500">Your desktop is perfectly organized.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: AI ACTIONS -->
+        <div class="lg:col-span-1 flex flex-col gap-6">
+          
+          <!-- AI Organizer Panel -->
+          <div class="glass-panel rounded-2xl flex flex-col p-1 ai-glow bg-[#111827]">
+            <div class="bg-[#111827] rounded-xl p-5 h-full flex flex-col">
+              <div class="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400 text-2xl mb-4">
+                <i class="ph-fill ph-sparkle"></i>
+              </div>
+              <h3 class="text-xl font-bold text-white mb-2">Nexyra AI Organizer</h3>
+              <p class="text-sm text-gray-400 mb-6">Let AI scan your messy folders and automatically categorize documents, media, and archives into their proper locations.</p>
+              
+              <!-- Features list -->
+              <ul class="text-xs text-gray-300 space-y-3 mb-8">
+                <li class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-cyan-400"></i> Smart file categorization</li>
+                <li class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-cyan-400"></i> Delete empty folders</li>
+                <li class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-cyan-400"></i> Highlight heavy duplicates</li>
+              </ul>
+
+              <div class="mt-auto relative">
+                <button id="aiSortBtn" onclick="runAIOrganizer()" class="w-full bg-gradient-to-r from-cyan-500 to-indigo-500 hover:from-cyan-400 hover:to-indigo-400 text-white py-3 rounded-xl font-semibold shadow-[0_0_20px_rgba(6,182,212,0.3)] transition-all flex items-center justify-center gap-2 group overflow-hidden relative">
+                  <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform"></div>
+                  <i class="ph-bold ph-magic-wand text-lg relative z-10" id="aiBtnIcon"></i> 
+                  <span class="relative z-10" id="aiBtnText">Auto-Sort Everything</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Filters Box -->
+          <div class="glass-panel p-5 rounded-2xl">
+            <h3 class="font-medium text-sm mb-3 text-gray-300">Quick Filters</h3>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="triggerToast('Filtering large files...', 'info')" class="bg-black/30 border border-white/5 hover:border-white/20 px-3 py-1.5 rounded-lg text-xs text-gray-300 transition-colors">Large Files (>1GB)</button>
+              <button onclick="triggerToast('Scanning for duplicates...', 'info')" class="bg-black/30 border border-white/5 hover:border-white/20 px-3 py-1.5 rounded-lg text-xs text-gray-300 transition-colors">Duplicates</button>
+              <button onclick="triggerToast('Filtering old files...', 'info')" class="bg-black/30 border border-white/5 hover:border-white/20 px-3 py-1.5 rounded-lg text-xs text-gray-300 transition-colors">Older than 1 Year</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  // --- SIDEBAR LOGIC ---
+  let isSidebarCollapsed = false;
+  function toggleSidebar() {
+    isSidebarCollapsed = !isSidebarCollapsed;
+    const sidebar = document.getElementById('sidebar');
+    const texts = document.querySelectorAll('.sidebar-text');
+    const tooltips = document.querySelectorAll('.tooltip');
+    const icon = document.getElementById('sidebarToggleIcon');
+
+    if(isSidebarCollapsed) {
+      sidebar.classList.remove('md:w-64');
+      sidebar.classList.add('md:w-20');
+      texts.forEach(el => el.classList.add('opacity-0', 'hidden'));
+      tooltips.forEach(el => el.classList.remove('hidden'));
+      icon.classList.add('rotate-180');
+    } else {
+      sidebar.classList.remove('md:w-20');
+      sidebar.classList.add('md:w-64');
+      texts.forEach(el => { el.classList.remove('hidden'); setTimeout(()=> el.classList.remove('opacity-0'), 100); });
+      tooltips.forEach(el => el.classList.add('hidden'));
+      icon.classList.remove('rotate-180');
+    }
+  }
+
+  function toggleMobileSidebar() {
+    document.getElementById('sidebar').classList.toggle('-translate-x-full');
+  }
+
+  // --- TOAST NOTIFICATIONS ---
+  function triggerToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    
+    let icon = 'ph-info';
+    let bgColor = 'bg-blue-500/10 border-blue-500/20';
+    let iconColor = 'text-blue-400';
+    
+    if(type === 'success') { icon = 'ph-check-circle'; bgColor = 'bg-green-500/10 border-green-500/20'; iconColor = 'text-green-400'; }
+    if(type === 'error') { icon = 'ph-warning-circle'; bgColor = 'bg-red-500/10 border-red-500/20'; iconColor = 'text-red-400'; }
+
+    toast.className = `toast-enter flex items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-lg pointer-events-auto ${bgColor}`;
+    toast.innerHTML = `<i class="ph-fill ${icon} ${iconColor} text-xl"></i><span class="text-sm font-medium text-white">${message}</span>`;
+    
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(100%)';
+      toast.style.transition = 'all 0.3s ease';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
+  // --- JUNK CLEANER LOGIC ---
+  const modal = document.getElementById('confirmModal');
+  const modalContent = document.getElementById('modalContent');
+
+  function requestCleanJunk() {
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+      modal.classList.remove('opacity-0');
+      modalContent.classList.remove('scale-95');
+    }, 10);
+  }
+
+  function closeModal() {
+    modal.classList.add('opacity-0');
+    modalContent.classList.add('scale-95');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+  }
+
+  document.getElementById('modalConfirmBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('modalConfirmBtn');
+    btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Cleaning...';
+    btn.disabled = true;
+    btn.classList.add('opacity-70', 'cursor-not-allowed');
+
+    try {
+      const res = await fetch('http://127.0.0.1:8000/api/clean', {method: 'POST'});
+      if(!res.ok) throw new Error('Clean Failed');
+      
+      // Update UI to show it's clean
+      document.getElementById('junkText').innerText = '0 MB';
+      document.getElementById('junkText').classList.replace('text-white', 'text-green-400');
+      document.getElementById('junkBar').style.width = '0%';
+      
+      triggerToast('Junk Files cleared successfully via OS Script', 'success');
+    } catch(err) {
+      triggerToast('Error cleaning junk files', 'error');
+    }
+    
+    btn.innerHTML = 'Clean Now';
+    btn.disabled = false;
+    btn.classList.remove('opacity-70', 'cursor-not-allowed');
+    closeModal();
+  });
+
+  // --- AI ORGANIZER LOGIC ---
+  function runAIOrganizer() {
+    const btn = document.getElementById('aiSortBtn');
+    const icon = document.getElementById('aiBtnIcon');
+    const text = document.getElementById('aiBtnText');
+    const panel = document.querySelector('.ai-glow');
+    
+    const table = document.getElementById('fileTable');
+    if(!table || table.innerHTML.trim() === '') {
+      triggerToast('Everything is already organized!', 'success');
+      return;
+    }
+
+    // Set Loading State
+    btn.disabled = true;
+    btn.classList.add('cursor-not-allowed', 'opacity-80');
+    icon.className = 'ph-bold ph-spinner animate-spin text-lg relative z-10';
+    text.innerText = 'AI is Organizing...';
+    panel.classList.add('active'); // triggers the glowing border animation intensely
+
+    // Simulate AI Processing and run backend script
+    setTimeout(async () => {
+      try {
+        const res = await fetch('http://127.0.0.1:8000/api/organize', {method: 'POST'});
+        if(!res.ok) throw new Error('Organize Failed');
+
+        // Clear the table with animation
+        table.style.transition = "opacity 0.5s";
+        table.style.opacity = "0";
+        
+        setTimeout(() => {
+          table.innerHTML = '';
+          table.style.opacity = "1";
+          document.getElementById('emptyState').classList.replace('hidden', 'flex');
+          document.getElementById('unorgCount').innerText = '0 items';
+          
+          // Reset Button State
+          btn.disabled = false;
+          btn.classList.remove('cursor-not-allowed', 'opacity-80');
+          icon.className = 'ph-bold ph-check-circle text-lg relative z-10';
+          text.innerText = 'Organized Successfully';
+          panel.classList.remove('active');
+          
+          triggerToast('OS script moved raw files to categorical folders successfully.', 'success');
+          
+          // Reset button text after 3 seconds
+          setTimeout(() => {
+            icon.className = 'ph-bold ph-magic-wand text-lg relative z-10';
+            text.innerText = 'Auto-Sort Everything';
+          }, 3000);
+          
+        }, 500);
+
+      } catch(e) {
+        triggerToast('AI Sorting failed. Check backend connection.', 'error');
+        btn.disabled = false;
+        btn.classList.remove('cursor-not-allowed', 'opacity-80');
+        icon.className = 'ph-bold ph-magic-wand text-lg relative z-10';
+        text.innerText = 'Auto-Sort Everything';
+        panel.classList.remove('active');
+      }
+    }, 1000);
+  }
+
+  // --- INITIALIZATION ---
+  async function initOrganizer() {
+    try {
+      // 0. Fetch Real Storage Stats
+      const sysRes = await fetch('http://127.0.0.1:8000/api/sysinfo');
+      if(sysRes.ok) {
+        const data = await sysRes.json();
+        if(data.disk_total) {
+          document.getElementById('diskUsedText').innerText = data.disk_used;
+          document.getElementById('diskTotalText').innerText = data.disk_total;
+          
+          // Calculate Free Space
+          const usedVal = parseFloat(data.disk_used);
+          const totalVal = parseFloat(data.disk_total);
+          const freeVal = totalVal - usedVal;
+          const unit = data.disk_total.replace(/[0-9.]/g, ''); // Extract 'Gi' or 'GB'
+          document.getElementById('diskFreeText').innerText = `${freeVal.toFixed(1)}${unit} Free`;
+          
+          // Progress Bar (Mainly solid for now based on total pct)
+          // We can't easily break down Documents/Apps/Media from df -h, so we use a solid bar or fallback
+          const pct = parseFloat(data.disk_pct);
+          // If we want to keep the multi-color look, we could just adjust the first bar
+          // but for accuracy, we updated the labels. 
+          // I'll make the first bar (blue) represent the total used minus others or just total used.
+          document.querySelector('.bg-blue-500').style.width = `${pct}%`;
+          document.querySelector('.bg-purple-500').style.width = `0%`;
+          document.querySelector('.bg-yellow-500').style.width = `0%`;
+        }
+      }
+
+      // 1. Fetch Junk Size
+      const junkRes = await fetch('http://127.0.0.1:8000/api/junk/size');
+      if(junkRes.ok) {
+        const data = await junkRes.json();
+        document.getElementById('junkText').innerText = data.size_gb;
+        // Adjust bar width if needed (e.g. max 10GB for 100%)
+        const pct = Math.min(100, (data.raw_bytes / (1024**3 * 10)) * 100);
+        document.getElementById('junkBar').style.width = `${pct}%`;
+      }
+
+      // 2. Fetch Unorganized Files
+      const filesRes = await fetch('http://127.0.0.1:8000/api/files/unorganized');
+      if(filesRes.ok) {
+        const data = await filesRes.json();
+        
+        // Update Path Display
+        document.getElementById('currentPath').innerHTML = `<i class="ph ph-hard-drives"></i> ${data.path}`;
+        
+        const table = document.getElementById('fileTable');
+        const emptyState = document.getElementById('emptyState');
+        const countBadge = document.getElementById('unorgCount');
+        
+        if(data.files && data.files.length > 0) {
+          table.innerHTML = '';
+          emptyState.classList.add('hidden');
+          countBadge.innerText = `${data.files.length} items`;
+          
+          data.files.slice(0, 10).forEach(file => {
+            table.innerHTML += `
+              <tr class="hover:bg-white/5 transition-colors group">
+                <td class="px-4 py-3 flex items-center gap-3"><i class="${file.icon} ${file.color} text-lg"></i> ${file.name}</td>
+                <td class="px-4 py-3 text-gray-400 text-xs">${file.time}</td>
+                <td class="px-4 py-3 text-gray-400 text-xs text-right">${file.size}</td>
+              </tr>
+            `;
+          });
+        } else {
+          table.innerHTML = '';
+          emptyState.classList.remove('hidden');
+          countBadge.innerText = `0 items`;
+        }
+      }
+    } catch(err) {
+      console.error('Organizer Init Error:', err);
+    }
+  }
+
+  initOrganizer();
+
+</script>
+</body>
+</html>

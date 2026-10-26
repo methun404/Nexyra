@@ -1,0 +1,12 @@
+{
+  "name": "system-monitor-and-control-os-lab",
+  "version": "1.0.0",
+  "description": "Nexyra - System Monitor and Control (OS Lab)",
+  "scripts": {
+    "start": "npm --prefix electron start",
+    "electron": "npm --prefix electron start",
+    "backend": "cd backend && source venv/bin/activate && uvicorn main:app --host 127.0.0.1 --port 8000 --reload"
+  },
+  "author": "Methun Ahmed",
+  "license": "MIT"
+}
